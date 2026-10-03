@@ -1,66 +1,50 @@
 # Second-Moment-Package-Windows
-A second-moment method is used to rapidly estimate rupture information for small and moderate earthquakes, employing deconvolution of EGFs to obtain ASTF.
----
-```markdown
-# Second-Moment Source Analysis
 
-A MATLAB toolbox for measuring apparent source time functions, estimating station-based temporal second moments, performing constrained second-moment inversion, and evaluating uncertainty using bootstrap and azimuthal jackknife resampling.
-
-The workflow is designed for earthquake source analysis using mainshock and empirical Green's function (EGF) waveform pairs. The final inversion estimates a second-moment tensor-like model and derives characteristic rupture quantities, including:
-
-- Characteristic source duration
-- Characteristic source length
-- Characteristic source width
-- Apparent centroid velocity
-- Mean centroid velocity
-- Directivity ratio
+A MATLAB package for rapidly estimating earthquake rupture information from mainshock and empirical Green’s function (EGF) waveform pairs. The package uses EGF deconvolution to obtain apparent source time functions (ASTFs), calculates station-based temporal second moments, performs constrained second-moment inversion, and evaluates model uncertainty using bootstrap and azimuthal jackknife resampling.
 
 ---
 
 ## 1. Overview
 
-The complete processing sequence is:
+The complete workflow is:
 
 ```text
-Input seismograms or example data
-            |
-            v
-EGF-based apparent source time function measurement
-            |
-            v
-Station-based temporal second moments
-            |
-            v
-Ray tracing and Green's-function construction
-            |
-            v
-Semidefinite constrained inversion
-            |
-            v
-Second-moment model parameters
-            |
-            v
-Derived source quantities
-            |
-            v
+Input waveform data
+        |
+        v
+EGF deconvolution and ASTF measurement
+        |
+        v
+Temporal second moments at individual stations
+        |
+        v
+Ray tracing and construction of the inverse matrix
+        |
+        v
+Constrained second-moment inversion
+        |
+        v
+Derived rupture parameters
+        |
+        v
 Bootstrap and azimuthal jackknife uncertainty analysis
 ```
 
-The inversion is based on the linear relationship
+The inversion solves the linear relation
 
-\[
+$$
 d = Gm_2,
-\]
+$$
 
 where:
 
 - \(d\) is the vector of measured temporal second moments;
-- \(G\) is the inverse operator or partial-derivative matrix;
-- \(m_2\) is the six-component second-moment model vector.
+- \(G\) is the inverse operator;
+- \(m_2\) is the second-moment model vector.
 
-The model vector is written as
+The physical model vector is
 
-\[
+$$
 m_2 =
 \begin{bmatrix}
 m_{tt} &
@@ -70,29 +54,24 @@ m_{xx} &
 m_{xy} &
 m_{yy}
 \end{bmatrix}^{T}.
-\]
+$$
 
-The implementation may internally use an additional dummy variable during the constrained optimization. The final physical model contains the first six elements.
+The optimization routine may internally use an additional dummy variable. After inversion, only the first six elements are retained as the physical model.
 
 ---
 
-# 2. Requirements
+## 2. Requirements and Input Data
 
-## 2.1 MATLAB
+### 2.1 Software requirements
 
-The workflow requires MATLAB with support for:
+The package requires:
 
-- Matrix operations
-- Singular-value decomposition
-- Numerical optimization routines used by `Step3_Inverse`
-- Plotting functions
-- Optional `tiledlayout` and `nexttile` plotting functions
+- MATLAB;
+- MATLAB Optimization Toolbox or the optimization functions used by `Step3_Inverse`;
+- TOPP ray-tracing executable;
+- Required MATLAB functions included in the project.
 
-The code should be run from the project root directory or from a MATLAB path that contains all source folders.
-
-## 2.2 External or project-specific functions
-
-The following functions must be available:
+Important project functions include:
 
 ```text
 Step1_Loading
@@ -108,25 +87,41 @@ Fun_PlotEstimate
 Fun_PrintEstimate
 ```
 
-The ray-tracing part also requires the TOPP executable and the associated velocity-model input files.
+The project is intended for Windows and requires the TOPP executable and its runtime libraries to be available.
 
-## 2.3 Input files
+### 2.2 Input files
 
-The default workflow expects files such as:
+The default example workflow uses:
 
 ```text
 Input/Data.mat
-Input/MEASUREMENTS_Exmaple.mat
+Input/MEASUREMENTS_Example.mat
 Input/Velocal.mat
 ```
 
-The filename `MEASUREMENTS_Exmaple.mat` follows the current project naming convention. If the intended spelling is `MEASUREMENTS_Example.mat`, the filename and the corresponding `load` command should be changed consistently.
+The input data should contain, or generate, the following variables:
+
+| Variable | Description |
+|---|---|
+| `velMS` | Mainshock velocity seismograms |
+| `velEGF` | EGF velocity seismograms |
+| `stasm` | Station list |
+| `compm` | Component list |
+| `slat` | Station latitudes |
+| `slon` | Station longitudes |
+| `late` | Earthquake latitude |
+| `lone` | Earthquake longitude |
+| `depe` | Earthquake depth |
+| `strike1` | Fault strike |
+| `dip1` | Fault dip |
+| `Vp` | P-wave velocity model |
+| `topl` | Velocity-layer boundaries |
 
 ---
 
-# 3. Main Control Parameters
+## 3. Main Control Parameters
 
-The main MATLAB script begins with a set of control parameters.
+The main script uses the following control parameters:
 
 ```matlab
 isData=1;
@@ -137,33 +132,58 @@ isInverse=1;
 niter=80;
 ```
 
-## 3.1 Data input mode
+### Data input
 
 ```matlab
 isData=1;
 ```
 
-When `isData=1`, the script loads a prepared example data file:
+- `1`: load prepared example data from `Input/Data.mat`;
+- `0`: execute `Step1_Loading` and read waveform files.
 
-```matlab
-load('Input\Data.mat');
-```
-
-When `isData=0`, the script executes:
-
-```matlab
-Step1_Loading;
-```
-
-This mode is intended for reading and preparing Miniseed or other waveform data.
-
-## 3.2 ASTF measurement mode
+### ASTF measurement
 
 ```matlab
 isMeasure=0;
 ```
 
-When `isMeasure=1`, the script calculates EGF-based apparent source time functions station by station:
+- `1`: perform ASTF measurement using `Step2_Measure`;
+- `0`: load previously measured results from `Input/MEASUREMENTS_Example.mat`.
+
+### Integration limits
+
+```matlab
+isInt=0;
+```
+
+- `0`: use the default ASTF integration limits;
+- `1`: perform an additional interactive selection of the integration limits.
+
+### Plotting and inversion
+
+```matlab
+isplot=1;
+isInverse=1;
+```
+
+- `isplot=1` enables station-summary and inversion plots;
+- `isInverse=1` performs the ray tracing and constrained inversion.
+
+The parameter
+
+```matlab
+niter=80;
+```
+
+controls the number of iterations used during ASTF measurement. Values between approximately 20 and 100 are generally suitable.
+
+---
+
+## 4. Processing Workflow
+
+### 4.1 ASTF measurement
+
+When `isMeasure=1`, the package calls:
 
 ```matlab
 [t2,DONE,STF,GFsv,dhatsv,datasv,Tsv,T1sv,...
@@ -173,152 +193,43 @@ When `isMeasure=1`, the script calculates EGF-based apparent source time functio
         stasm,compm,isInt);
 ```
 
-When `isMeasure=0`, previously prepared measurements are loaded from:
-
-```matlab
-load('Input\MEASUREMENTS_Exmaple.mat');
-```
-
-The measurement stage produces the station-dependent temporal second moment vector `t2`.
-
-## 3.3 Interactive integration mode
-
-```matlab
-isInt=0;
-```
-
-This parameter controls whether the integration limits of the apparent source time function are selected interactively.
-
-- `isInt=0`: integrate over the default or automatically selected ASTF interval;
-- `isInt=1`: perform an additional interactive picking procedure.
-
-## 3.4 Plotting
-
-```matlab
-isplot=1;
-```
-
-When enabled, the script generates a station-summary map:
-
-```matlab
-Fun_PlotASTFMap(IJ,slon,slat,t2,STF,dtsv,t0,lone,late);
-```
-
-where `IJ` contains the stations for which `DONE==1`.
-
-## 3.5 Inversion
-
-```matlab
-isInverse=1;
-```
-
-When enabled, the script performs:
-
-1. Station-data assembly;
-2. Velocity-model loading;
-3. Ray tracing;
-4. Construction of the inverse matrix;
-5. Constrained inversion;
-6. Calculation of derived quantities.
-
-The parameter
-
-```matlab
-niter=80;
-```
-
-controls the number of iterations used during the ASTF measurement stage. Values between approximately 20 and 100 are normally appropriate, depending on the data quality and waveform complexity.
-
----
-
-# 4. Data Preparation and Measurement
-
-## 4.1 Effective station selection
-
-After the measurement stage, only completed measurements are selected:
-
-```matlab
-IJ=find(DONE==1);
-```
-
-The following station-related arrays are then assembled:
-
-```matlab
-mlats=slat(IJ);
-mlons=slon(IJ);
-melevs=zeros(Nj,1);
-d=t2(IJ);
-phas=upper(char(PhaseSv(IJ)));
-```
-
-The variables are:
-
-| Variable | Description |
-|---|---|
-| `mlats` | Station latitudes |
-| `mlons` | Station longitudes |
-| `melevs` | Station elevations, currently set to zero |
-| `d` | Measured temporal second moments |
-| `phas` | Selected seismic phase, for example `P` or `S` |
-| `Nj` | Number of effective stations |
-
-The data vector is converted to a row vector before calling the main inversion:
-
-```matlab
-d=d(:)';
-```
-
-The sampling-analysis functions subsequently standardize it back to a column vector.
-
-## 4.2 Apparent source time functions
-
-The measurement stage estimates the apparent source time function for each station using the mainshock and EGF waveforms. The important output is:
+The most important output is:
 
 ```matlab
 t2
 ```
 
-This quantity is interpreted as the measured temporal second moment, commonly written as:
+which represents the temporal second moment of the measured ASTF:
 
-\[
+$$
 \mu^{(0,2)}.
-\]
+$$
 
-The source-time-function measurement stage may also return:
+Only successful measurements are selected:
 
-- STF waveforms;
-- Truncated and aligned EGF waveforms;
-- Fitted waveforms;
-- Misfit curves;
-- Duration estimates;
-- Phase information;
-- Integration limits.
+```matlab
+IJ=find(DONE==1);
+```
 
----
+The selected station data are then assembled as:
 
-# 5. Velocity Model and Ray Tracing
+```matlab
+mlats=slat(IJ);
+mlons=slon(IJ);
+d=t2(IJ);
+phas=upper(char(PhaseSv(IJ)));
+```
 
-The inversion requires a velocity model. The current script loads:
+### 4.2 Ray tracing and matrix construction
+
+The local velocity model is loaded using:
 
 ```matlab
 load('Input\Velocal.mat','Vp','topl');
 Vs=Vp/1.73;
 ```
 
-where:
-
-- `Vp` is the P-wave velocity model;
-- `Vs` is estimated using a fixed \(V_p/V_s\) ratio;
-- `topl` contains the layer-top or model-depth information.
-
-The source and fault geometry are specified by:
-
-```matlab
-strike=strike1;
-dip=dip1;
-```
-
-The ray-tracing and inverse-operator construction are performed by:
+The inverse matrix is constructed by:
 
 ```matlab
 [G,takeoffs,taketimes]=Step3_Initial( ...
@@ -328,17 +239,13 @@ The ray-tracing and inverse-operator construction are performed by:
 
 The outputs are:
 
-| Output | Description |
-|---|---|
-| `G` | Inverse operator or partial-derivative matrix |
-| `takeoffs` | Ray take-off angles |
-| `taketimes` | Ray travel times |
+- `G`: inverse operator;
+- `takeoffs`: ray take-off angles;
+- `taketimes`: ray travel times.
 
-The matrix `G` must have six columns corresponding to the six model parameters in `m2`.
+The matrix `G` must have six physical model columns.
 
----
-
-# 6. Semidefinite Constrained Inversion
+### 4.3 Constrained inversion
 
 The inversion is performed using:
 
@@ -346,149 +253,178 @@ The inversion is performed using:
 [m2,~,~,Vx,Vy,~,info]=Step3_Inverse(G,d');
 ```
 
-The first output is the model vector. Depending on the implementation, additional outputs may include:
-
-- Apparent centroid velocity components;
-- Optimization status;
-- Constraint information;
-- Diagnostic quantities.
-
-The final physical model is extracted using:
+The physical model is retained as:
 
 ```matlab
 m2=m2(1:6);
 ```
 
-The inversion is based on a constrained least-squares problem. The spatial part of the model is represented by:
+The spatial component of the model is:
 
 ```matlab
 Xvar=[m2(4),m2(5);
       m2(5),m2(6)];
 ```
 
-The spatial matrix is expected to satisfy the physical constraints required by the semidefinite formulation.
-
 ---
 
-# 7. Derived Source Quantities
+## 5. Derived Rupture Quantities
 
-The preferred way to calculate derived parameters is through:
+Derived quantities are calculated by:
 
 ```matlab
 best=calDerived(m2,G,d);
 ```
 
-The main derived quantities are defined as follows.
+### Characteristic duration
 
-## 7.1 Characteristic duration
+The characteristic source duration is
 
-\[
+$$
 \tau_c = 2\sqrt{m_{tt}}.
-\]
+$$
 
-In MATLAB:
+In the code, this quantity is stored as:
 
 ```matlab
-tauc=2*sqrt(m2(1));
+tauc
 ```
 
-## 7.2 Characteristic length and width
+### Characteristic length and width
 
-The spatial second-moment matrix is:
+The spatial second-moment matrix is
 
-\[
+$$
 X =
 \begin{bmatrix}
-m_{xx} & m_{xy}\\
+m_{xx} & m_{xy} \\
 m_{xy} & m_{yy}
 \end{bmatrix}.
-\]
+$$
 
-Its singular values are calculated using:
+Its singular values are obtained from:
 
 ```matlab
-[U,S,V]=svd(Xvar);
+[U,S,V]=svd(X);
 ```
 
-The characteristic length and width are:
+The characteristic length and width are calculated as
 
-\[
+$$
 L_c = 2\sqrt{\lambda_1},
-\]
+$$
 
-\[
+and
+
+$$
 W_c = 2\sqrt{\lambda_2},
-\]
+$$
 
-where \(\lambda_1\) and \(\lambda_2\) are the ordered singular values of the spatial matrix.
+where \(\lambda_1\) and \(\lambda_2\) are the ordered singular values of \(X\).
 
-## 7.3 Apparent centroid velocity
+The corresponding variables are:
 
-The velocity components are calculated from:
+```matlab
+Lc
+Wc
+```
 
-\[
+### Apparent centroid velocity
+
+The two components of the apparent centroid velocity are
+
+$$
 V_x = \frac{m_{xt}}{m_{tt}},
-\]
+$$
 
-\[
+and
+
+$$
 V_y = \frac{m_{yt}}{m_{tt}}.
-\]
+$$
 
-In MATLAB:
+They are stored as:
 
 ```matlab
-V0=m2(2:3)/m2(1);
-Vx=V0(1);
-Vy=V0(2);
+Vx
+Vy
 ```
 
-## 7.4 Mean centroid velocity
+The velocity vector is
 
-The magnitude of the apparent centroid velocity is:
+$$
+\mathbf{V}_0 =
+\begin{bmatrix}
+V_x \\
+V_y
+\end{bmatrix}.
+$$
 
-\[
+### Mean centroid velocity
+
+The magnitude of the centroid velocity is
+
+$$
 |V_0| = \sqrt{V_x^2+V_y^2}.
-\]
+$$
 
-In MATLAB:
+This quantity is stored as:
 
 ```matlab
-mV0=sqrt(sum(V0.^2));
+mV0
 ```
 
-## 7.5 Characteristic rupture velocity
+### Characteristic velocity
 
-The characteristic velocity associated with the spatial and temporal dimensions is:
+The characteristic rupture velocity is
 
-\[
+$$
 V_c = \frac{L_c}{\tau_c}.
-\]
+$$
 
-## 7.6 Centroid displacement scale
+It is stored as:
 
-The centroid displacement scale is:
+```matlab
+Vc
+```
 
-\[
+### Centroid displacement scale
+
+The centroid displacement scale is
+
+$$
 L_0 = \tau_c |V_0|.
-\]
+$$
 
-## 7.7 Directivity ratio
+It is stored as:
 
-The directivity ratio is:
+```matlab
+L0
+```
 
-\[
+### Directivity ratio
+
+The normalized directivity ratio is
+
+$$
 \frac{L_0}{L_c}
 =
 \frac{\tau_c |V_0|}{L_c}
 =
 \frac{|V_0|}{V_c}.
-\]
+$$
 
-It is interpreted as a normalized measure of unilateral or directed rupture behavior. Values close to zero indicate weak apparent directivity, while larger values indicate stronger directed centroid motion.
+It is stored as:
+
+```matlab
+ratio
+```
+
+A small value generally indicates weak apparent directivity, whereas a larger value indicates stronger directed centroid motion. The ratio should be interpreted together with its uncertainty.
 
 ---
 
-# 8. Sampling Uncertainty Analysis
+## 6. Bootstrap and Azimuthal Jackknife
 
 The uncertainty analysis is controlled by:
 
@@ -503,34 +439,11 @@ Nsample=500;
 bconf=0.95;
 ```
 
-The random seed allows the bootstrap calculation to be reproduced.
+The random seed ensures that bootstrap results can be reproduced.
 
-Before sampling analysis, the inputs are standardized:
+### 6.1 Bootstrap analysis
 
-```matlab
-G=double(G);
-d=double(d(:));
-m2=double(m2(:));
-
-if numel(m2)>=7
-    m2=m2(1:6);
-end
-
-mlons=double(mlons(:));
-mlats=double(mlats(:));
-```
-
-The best-fit derived values are calculated once:
-
-```matlab
-best=calDerived(m2,G,d);
-```
-
----
-
-# 9. Bootstrap Analysis
-
-The bootstrap calculation is called using:
+The bootstrap function is called as:
 
 ```matlab
 if isBoot
@@ -543,44 +456,24 @@ if isBoot
 end
 ```
 
-## 9.1 Bootstrap procedure
+For each bootstrap realization, the procedure:
 
-For each realization:
+1. Resamples the rows of `G` and the corresponding elements of `d`;
+2. Performs a new constrained inversion;
+3. Calculates all derived quantities;
+4. Rejects failed realizations;
+5. Calculates percentile confidence intervals.
 
-1. Randomly resample the observations with replacement;
-2. Construct a resampled matrix `Gi`;
-3. Construct a resampled data vector `di`;
-4. Recalculate the constrained inversion;
-5. Recalculate all derived quantities;
-6. Store the result;
-7. Remove failed realizations;
-8. Calculate percentile confidence intervals.
-
-The resampling is performed at the observation level. Therefore, the method preserves the original association between each row of `G` and the corresponding entry of `d`.
-
-## 9.2 Bootstrap parameters
+Important input parameters are:
 
 | Parameter | Description |
 |---|---|
 | `Nsample` | Number of bootstrap realizations |
-| `bconf` | Confidence level, normally `0.95` |
-| `MakeFigure` | Whether to display bootstrap histograms |
+| `bconf` | Confidence level, for example `0.95` |
+| `MakeFigure` | Whether to create bootstrap histograms |
 | `FigureNumber` | MATLAB figure number |
 
-For example:
-
-```matlab
-Nsample=500;
-bconf=0.95;
-```
-
-A larger value of `Nsample` produces smoother percentile estimates but increases computation time.
-
-## 9.3 Bootstrap output
-
-The structure `boot` contains the bootstrap realizations and confidence intervals.
-
-Typical realization fields include:
+The output structure `boot` contains realization arrays such as:
 
 ```matlab
 boot.m2
@@ -593,20 +486,10 @@ boot.mV0
 boot.Vc
 boot.L0
 boot.ratio
-boot.bound2
-boot.minvr
 boot.Misfit
 ```
 
-The field:
-
-```matlab
-boot.Nvalid
-```
-
-contains the number of successful bootstrap inversions.
-
-Typical confidence-interval fields include:
+The corresponding confidence intervals are stored in:
 
 ```matlab
 boot.taucCI
@@ -618,14 +501,12 @@ boot.mV0CI
 boot.VcCI
 boot.L0CI
 boot.ratioCI
-boot.bound2CI
-boot.minvrCI
 ```
 
-The confidence intervals are percentile intervals. They should always be displayed in the order:
+Confidence intervals should always be reported as:
 
 ```text
-lower bound, upper bound
+[lower bound, upper bound]
 ```
 
 For example:
@@ -634,43 +515,35 @@ For example:
 Vy : [-1.61, 1.07]
 ```
 
-If a confidence interval is calculated using quantiles, the implementation should enforce:
+The implementation should use:
 
 ```matlab
 limits=sort(limits(:));
 ```
 
-This is particularly important for signed quantities such as `Vy`.
+before printing each interval.
 
----
+### 6.2 Azimuthal jackknife
 
-# 10. Azimuthal Jackknife Analysis
-
-The azimuthal jackknife is called using:
+The azimuthal jackknife is called as:
 
 ```matlab
 if isJack
     jack=Step4_Jackknife( ...
-        G,d,m2,...
-        late,lone,mlats,mlons,azband,...
+        G,d,m2,late,lone,mlats,mlons,azband,...
         'MakeFigure',false,...
         'FigureNumber',6);
 end
 ```
 
-## 10.1 Jackknife procedure
+For each azimuthal interval, the function:
 
-The station azimuths are calculated from the source to each station. The full azimuth range is divided into groups of width `azband`.
-
-For each azimuth group:
-
-1. Delete all stations within that azimuth interval;
-2. Retain the remaining stations;
-3. Recalculate the constrained inversion;
-4. Calculate derived source quantities;
-5. Store the result;
-6. Mark failed inversions as invalid;
-7. Calculate jackknife uncertainties from the valid realizations.
+1. Calculates the station azimuths;
+2. Deletes stations within one azimuth bin;
+3. Repeats the constrained inversion;
+4. Calculates the derived quantities;
+5. Stores the valid realization;
+6. Computes jackknife uncertainties.
 
 For example:
 
@@ -678,28 +551,12 @@ For example:
 azband=20;
 ```
 
-divides the 360-degree azimuth range into approximately 18 groups.
+uses azimuthal deletion bins with a width of 20 degrees.
 
-## 10.2 Jackknife parameters
-
-| Parameter | Description |
-|---|---|
-| `azband` | Width of each deleted azimuth interval in degrees |
-| `late` | Event latitude |
-| `lone` | Event longitude |
-| `mlats` | Station latitudes |
-| `mlons` | Station longitudes |
-| `MinObservations` | Minimum number of remaining observations |
-
-The jackknife function should use `NaN` for failed or skipped realizations. Preallocating failed realizations with zeros would incorrectly classify them as valid solutions.
-
-## 10.3 Jackknife output
-
-The structure `jack` contains:
+The output structure contains:
 
 ```matlab
 jack.m2
-jack.m2All
 jack.tauc
 jack.Lc
 jack.Wc
@@ -714,15 +571,12 @@ jack.azimuthUpper
 jack.azimuthCenter
 jack.valid
 jack.Nvalid
-jack.meanModel
 jack.covarianceSample
 jack.covarianceJK
 jack.errors
 ```
 
-The fields `jack.tauc`, `jack.Lc`, `jack.Vy`, and the other derived quantities contain the valid jackknife realizations.
-
-The direct jackknife standard errors are available through:
+The direct jackknife standard errors are:
 
 ```matlab
 jack.errors.sigmaTauc
@@ -734,101 +588,13 @@ jack.errors.sigmaMv0
 jack.errors.sigmaRatio
 ```
 
-The classical delete-group jackknife covariance matrix is:
-
-\[
-C_{\mathrm{JK}}
-=
-\frac{K-1}{K}
-\sum_{i=1}^{K}
-(\theta_i-\bar{\theta})
-(\theta_i-\bar{\theta})^T,
-\]
-
-where \(K\) is the number of valid jackknife realizations.
+Failed realizations must be stored as `NaN`, rather than zeros, so that they are not incorrectly treated as valid inversions.
 
 ---
 
-# 11. Interpreting Large Uncertainties
+## 7. Running the Uncertainty Analysis
 
-Large uncertainties in `Vy` and `L0/Lc` do not necessarily indicate a programming error.
-
-The parameter
-
-\[
-V_y=\frac{m_{yt}}{m_{tt}}
-\]
-
-is sensitive to changes in both \(m_{yt}\) and \(m_{tt}\). It becomes particularly unstable when:
-
-- The station azimuth distribution is uneven;
-- One or more azimuth sectors strongly constrain the solution;
-- The inverse matrix is poorly conditioned;
-- The temporal second-moment measurements contain substantial scatter;
-- The spatial matrix has a small second eigenvalue;
-- Removing a small station group significantly changes the inversion.
-
-The ratio
-
-\[
-\frac{L_0}{L_c}
-=
-\frac{\tau_c |V_0|}{L_c}
-\]
-
-is a nonlinear ratio and can become unstable when \(L_c\) varies strongly between jackknife realizations.
-
-Therefore, large jackknife uncertainties should be interpreted as evidence of weak or uneven data constraints rather than automatically treated as a coding failure.
-
-Recommended diagnostic quantities include:
-
-```matlab
-min(jack.Vy)
-max(jack.Vy)
-
-min(jack.Lc)
-max(jack.Lc)
-
-min(jack.ratio)
-max(jack.ratio)
-
-jack.Nvalid
-```
-
-A low valid-realization fraction should trigger further inspection of station distribution, data quality, matrix rank, and inversion constraints.
-
----
-
-# 12. Recommended Execution Order
-
-A complete run can be organized as follows:
-
-```matlab
-% 1. Load or prepare waveform data
-Step1_Loading;
-
-% 2. Measure ASTFs and temporal second moments
-Step2_Measure;
-
-% 3. Construct G and perform inversion
-Step3_Initial;
-Step3_Inverse;
-
-% 4. Calculate best-fit derived quantities
-best=calDerived(m2,G,d);
-
-% 5. Bootstrap uncertainty
-boot=Step4_Bootstrap(...);
-
-% 6. Azimuthal jackknife uncertainty
-jack=Step4_Jackknife(...);
-
-% 7. Export or save results
-save('Output/SecondMomentResults.mat',...
-    'm2','best','boot','jack');
-```
-
-The current project uses the following compact sampling-analysis block:
+The complete sampling-analysis block is:
 
 ```matlab
 rng(2026);
@@ -870,13 +636,34 @@ if isJack
 end
 ```
 
+A complete result can be saved using:
+
+```matlab
+if ~exist('Output','dir')
+    mkdir('Output');
+end
+
+save('Output/SecondMomentResults.mat',...
+    'm2','best','boot','jack','G','d');
+```
+
+The best-fit results are stored in `best`, while the uncertainty results are stored in `boot` and `jack`.
+
+Large uncertainties, particularly for `Vy` or `L0/Lc`, may indicate:
+
+- Uneven station-azimuth coverage;
+- Strong dependence on individual stations;
+- Poorly constrained inversion parameters;
+- Instability of the spatial second-moment eigenvalues;
+- Nonlinear amplification caused by the ratio \(L_0/L_c\).
+
+These uncertainties should be interpreted as information about data resolution and model stability rather than automatically as programming errors.
+
 ---
 
-# 13. Suggested Output Reporting
+## 8. Output, Limitations, and Reproducibility
 
-A final report should include both best-fit values and uncertainty estimates.
-
-Example:
+A typical result table may contain:
 
 ```text
 Parameter       Best estimate       Bootstrap 95% CI       Jackknife SE
@@ -890,87 +677,20 @@ V_y             0.468               [-1.613, 1.066]        1.489
 L_0/L_c         0.727               [0.324, 0.985]         1.546
 ```
 
-The bootstrap interval and jackknife standard error measure different aspects of uncertainty:
+Bootstrap confidence intervals and jackknife standard errors describe different sources of uncertainty:
 
-- Bootstrap intervals describe the distribution obtained by resampling observations with replacement.
-- Jackknife errors describe the sensitivity of the solution to the deletion of azimuthal station groups.
+- Bootstrap uncertainty is estimated by resampling observations with replacement.
+- Jackknife uncertainty measures sensitivity to the deletion of azimuthal station groups.
 
-Both are useful and should not be expected to be identical.
+The main limitations are:
 
----
-
-# 14. Reproducibility
-
-The bootstrap analysis uses random resampling. To reproduce a result, set the random-number seed before calling the sampling functions:
-
-```matlab
-rng(2026);
-```
-
-If a different random seed is used, the bootstrap confidence intervals may change slightly, especially when `Nsample` is small.
-
-For stable confidence intervals, use a sufficiently large number of bootstrap realizations, for example:
-
-```matlab
-Nsample=500;
-```
-
-or:
-
-```matlab
-Nsample=1000;
-```
-
-The computation may take longer because each bootstrap realization requires a new constrained inversion.
-
----
-
-# 15. Saving Results
-
-The main results can be saved using:
-
-```matlab
-if ~exist('Output','dir')
-    mkdir('Output');
-end
-
-save('Output/SecondMomentResults.mat',...
-    'm2','best','boot','jack');
-```
-
-Recommended saved variables are:
-
-| Variable | Description |
-|---|---|
-| `m2` | Best-fit six-component model |
-| `best` | Best-fit derived quantities |
-| `boot` | Bootstrap realizations and confidence intervals |
-| `jack` | Azimuthal jackknife realizations and uncertainties |
-| `G` | Inverse operator |
-| `d` | Station-based temporal second moments |
-| `takeoffs` | Ray take-off angles |
-| `taketimes` | Ray travel times |
-
-For long-term reproducibility, also save:
-
-- Velocity-model files;
-- Fault geometry;
-- Station coordinates;
-- Phase assignments;
-- Random-number seed;
-- Main script version or Git commit hash.
-
----
-
-# 16. Known Limitations
-
-1. The velocity model currently estimates \(V_s\) using a fixed ratio:
+1. The current implementation estimates
 
    ```matlab
    Vs=Vp/1.73;
    ```
 
-   This ratio may not be appropriate for all geological settings.
+   using a fixed \(V_p/V_s\) ratio.
 
 2. Station elevations are currently set to zero:
 
@@ -978,22 +698,12 @@ For long-term reproducibility, also save:
    melevs=zeros(Nj,1);
    ```
 
-   Topographic and elevation effects should be included when required.
+3. Bootstrap and jackknife calculations do not automatically include systematic errors from the velocity model, fault geometry, or ray tracing.
 
-3. Bootstrap uncertainty does not automatically include systematic errors in the velocity model, fault geometry, or ray tracing.
+4. Jackknife results depend on the selected `azband`.
 
-4. Jackknife results depend on the chosen azimuth-bin width.
+5. The nonlinear directivity ratio \(L_0/L_c\) may have substantially larger uncertainty than the individual parameters used to calculate it.
 
-5. Very large uncertainties in `Vy` or `L0/Lc` indicate that the corresponding quantities may not be strongly constrained by the available station distribution.
-
-6. The `L0/Lc` ratio is nonlinear and should preferably be evaluated directly for every resampled or jackknife model rather than estimated only through a first-order covariance approximation.
-
----
-
-# 17. License and Citation
-
-If this code is used in a publication, please cite the associated methodological paper and acknowledge the data providers, velocity model, ray-tracing implementation, and empirical Green's function dataset.
-
-A recommended citation section may be added here after the project paper and software license are finalized.
+For reproducibility, save the random seed, input files, velocity model, fault geometry, station coordinates, and the Git commit used for the calculation.
 
 ---
