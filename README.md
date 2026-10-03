@@ -3,6 +3,9 @@
 A MATLAB package for rapidly estimating earthquake rupture information from mainshock and empirical Green’s function (EGF) waveform pairs. The package uses EGF deconvolution to obtain apparent source time functions (ASTFs), calculates station-based temporal second moments, performs constrained second-moment inversion, and evaluates model uncertainty using bootstrap and azimuthal jackknife resampling.
 
 ---
+<div align=center><img width="1000" height="600" alt="fig3" src="https://github.com/user-attachments/assets/58f0cbc4-d453-4330-8c49-b28bb8c16969" /> </div>
+<img width="600" height="520" alt="fig5-true" src="https://github.com/user-attachments/assets/1845631c-7432-4ec2-9ee7-512a054cbdad" />
+<div align=center><img width="1500" height="500" alt="fig7" src="https://github.com/user-attachments/assets/b24916ba-5b58-49f3-9169-83d243414309" /></div>
 
 ## 1. Overview
 
@@ -201,9 +204,7 @@ t2
 
 which represents the temporal second moment of the measured ASTF:
 
-$$
-\mu^{(0,2)}.
-$$
+$$ \mu^{(0,2)}. $$
 
 Only successful measurements are selected:
 
@@ -393,7 +394,7 @@ Vc
 The centroid displacement scale is
 
 $$
-L_0 = \tau_c |V_0|.
+L_0 = \tau_c |V_0|. 
 $$
 
 It is stored as:
@@ -408,10 +409,8 @@ The normalized directivity ratio is
 
 $$
 \frac{L_0}{L_c}
-=
-\frac{\tau_c |V_0|}{L_c}
-=
-\frac{|V_0|}{V_c}.
+= \frac{\tau_c |V_0|}{L_c}
+= \frac{|V_0|}{V_c}.
 $$
 
 It is stored as:
@@ -425,19 +424,6 @@ A small value generally indicates weak apparent directivity, whereas a larger va
 ---
 
 ## 6. Bootstrap and Azimuthal Jackknife
-
-The uncertainty analysis is controlled by:
-
-```matlab
-rng(2026);
-
-isJack=true;
-azband=20;
-
-isBoot=true;
-Nsample=500;
-bconf=0.95;
-```
 
 The random seed ensures that bootstrap results can be reproduced.
 
@@ -589,121 +575,5 @@ jack.errors.sigmaRatio
 ```
 
 Failed realizations must be stored as `NaN`, rather than zeros, so that they are not incorrectly treated as valid inversions.
-
----
-
-## 7. Running the Uncertainty Analysis
-
-The complete sampling-analysis block is:
-
-```matlab
-rng(2026);
-
-isJack=true;
-azband=20;
-
-isBoot=true;
-Nsample=500;
-bconf=0.95;
-
-G=double(G);
-d=double(d(:));
-m2=double(m2(:));
-
-if numel(m2)>=7
-    m2=m2(1:6);
-end
-
-mlons=double(mlons(:));
-mlats=double(mlats(:));
-
-best=calDerived(m2,G,d);
-
-if isBoot
-    [mv0u,mv0l,bound2u,bound2l,...
-        Lcu,Lcl,taucu,taucl,boot]=...
-        Step4_Bootstrap( ...
-            G,d,bconf,Nsample,...
-            'MakeFigure',true,...
-            'FigureNumber',5);
-end
-
-if isJack
-    jack=Step4_Jackknife( ...
-        G,d,m2,late,lone,mlats,mlons,azband,...
-        'MakeFigure',false,...
-        'FigureNumber',6);
-end
-```
-
-A complete result can be saved using:
-
-```matlab
-if ~exist('Output','dir')
-    mkdir('Output');
-end
-
-save('Output/SecondMomentResults.mat',...
-    'm2','best','boot','jack','G','d');
-```
-
-The best-fit results are stored in `best`, while the uncertainty results are stored in `boot` and `jack`.
-
-Large uncertainties, particularly for `Vy` or `L0/Lc`, may indicate:
-
-- Uneven station-azimuth coverage;
-- Strong dependence on individual stations;
-- Poorly constrained inversion parameters;
-- Instability of the spatial second-moment eigenvalues;
-- Nonlinear amplification caused by the ratio \(L_0/L_c\).
-
-These uncertainties should be interpreted as information about data resolution and model stability rather than automatically as programming errors.
-
----
-
-## 8. Output, Limitations, and Reproducibility
-
-A typical result table may contain:
-
-```text
-Parameter       Best estimate       Bootstrap 95% CI       Jackknife SE
------------------------------------------------------------------------
-tau_c           0.306               [0.232, 0.367]         0.031
-L_c             0.399               [0.329, 1.525]         0.578
-W_c             0.250               [0.046, 0.523]         0.450
-V_x             0.823               [0.606, 2.233]         0.168
-V_y             0.468               [-1.613, 1.066]        1.489
-|V_0|           0.946               [0.729, 2.592]         0.782
-L_0/L_c         0.727               [0.324, 0.985]         1.546
-```
-
-Bootstrap confidence intervals and jackknife standard errors describe different sources of uncertainty:
-
-- Bootstrap uncertainty is estimated by resampling observations with replacement.
-- Jackknife uncertainty measures sensitivity to the deletion of azimuthal station groups.
-
-The main limitations are:
-
-1. The current implementation estimates
-
-   ```matlab
-   Vs=Vp/1.73;
-   ```
-
-   using a fixed \(V_p/V_s\) ratio.
-
-2. Station elevations are currently set to zero:
-
-   ```matlab
-   melevs=zeros(Nj,1);
-   ```
-
-3. Bootstrap and jackknife calculations do not automatically include systematic errors from the velocity model, fault geometry, or ray tracing.
-
-4. Jackknife results depend on the selected `azband`.
-
-5. The nonlinear directivity ratio \(L_0/L_c\) may have substantially larger uncertainty than the individual parameters used to calculate it.
-
-For reproducibility, save the random seed, input files, velocity model, fault geometry, station coordinates, and the Git commit used for the calculation.
 
 ---
