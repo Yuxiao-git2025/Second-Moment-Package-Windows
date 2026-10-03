@@ -2,6 +2,11 @@
 
 A MATLAB package for rapidly estimating earthquake rupture information from mainshock and empirical Green’s function (EGF) waveform pairs. The package uses EGF deconvolution to obtain apparent source time functions (ASTFs), calculates station-based temporal second moments, performs constrained second-moment inversion, and evaluates model uncertainty using bootstrap and azimuthal jackknife resampling.
 
+
+see more details from the source website: `https://www2.whoi.edu/staff/jmcguire/software/` (system: Linux or MacOS)
+
+In this version, we have adopted the Windows system, which greatly enhances convenience.
+
 ---
 <div align=center><img width="1000" height="600" alt="fig3" src="https://github.com/user-attachments/assets/58f0cbc4-d453-4330-8c49-b28bb8c16969" /> </div>
 <img width="600" height="520" alt="fig5-true" src="https://github.com/user-attachments/assets/1845631c-7432-4ec2-9ee7-512a054cbdad" />
